@@ -1,0 +1,122 @@
+import numpy as np
+import Adafruit_BBIO.UART as UART
+import Adafruit_BBIO.GPIO as GPIO
+import Adafruit_BBIO.PWM as PWM
+from time import sleep
+import serial
+
+pwm1="P9_14"
+pwm2="P9_16"
+PWM.start(pwm1,5,50)
+PWM.start(pwm2,5,50)
+pos1=7
+pos2=5
+PWM.set_duty_cycle(pwm1,pos1)
+PWM.set_duty_cycle(pwm2,pos2)
+
+
+def map(val, iMin, iMax, oMin,oMax):
+    c = (val - iMin) * (oMax - oMin) / (iMax - iMin) + oMin
+    return int(c)
+
+def deger_dondur(yatayX,dikeyY):
+    if (yatayX >= 0) & (55 > yatayX) & (dikeyY >= 0) & (dikeyY < 45):
+            return 1
+    
+    elif yatayX >= 55 & yatayX < 110 & dikeyY >= 0 & dikeyY < 45:
+            return 2
+
+    elif yatayX >= 110 & yatayX < 170 & dikeyY >= 0 & dikeyY < 45:
+            return 3
+
+    elif yatayX >= 0 & yatayX < 55 & dikeyY >= 45 & 90 >= dikeyY:
+[16:43, 02.05.2023] Fatih Yıldız Hacettepe: elif yatayX >= 0 & yatayX < 55 & dikeyY >= 45 & 90 >= dikeyY:
+            return 4
+    elif yatayX >= 55 & yatayX < 110 & dikeyY >= 45 & 90 >= dikeyY:
+            return 5
+    elif yatayX >= 110 & 170 >= yatayX & dikeyY >= 45 & 90 >= dikeyY:
+            return 6
+def motor_dondur():
+    global pos1
+    global pos2
+    a = (deger_dondur(yatayX,dikeyY))
+    if a == 1:
+        pos1 += 1
+        pos2 += 1
+        sleep(1.5)
+        if pos1 > 14:
+                pos1 = 14
+        if pos2 > 14:
+                pos2 = 14
+elif a == 2: 
+        pos2 += 1
+        sleep(1.5)
+        if pos2 > 14:
+                pos2 = 14
+
+    elif a == 3: 
+        pos1 -= 1
+        sleep(1.5)
+        if pos1 < 0:
+                pos1 = 0
+
+    elif a == 4: 
+        pos1 += 1
+        pos2 -= 1
+        sleep(1.5)
+        if pos1 > 14:
+                pos1 = 14
+        if pos2 < 0:
+                pos2 = 0
+
+    elif a == 5: 
+        pos2 -= 1
+        sleep(1.5)
+        if pos2 < 0:
+                pos2 = 0
+
+    elif a == 6: 
+        pos1 -= 1
+        pos2 -= 1
+        sleep(1.5)
+        if pos1 < 0:
+pos1 = 0
+        if pos2 < 0:
+                pos2 = 0
+
+ 
+   
+videocapture =cv2.VideoCapture(0)
+prevCircle=None
+dist= lambda x1,y1,x2,y2: (x1-x2)*2+(y1-y2)*2
+while True:
+
+    ret,frame =videocapture.read()
+    frame = cv2.flip(frame,1)
+    if not ret:break
+    frame=cv2.resize(frame,(170,140))
+    grayframe=cv2.cvtColor(frame,cv2.COLOR_BGR2GRAY)
+    blurframe=cv2.GaussianBlur(grayframe,(15,15),0)
+circles=cv2.HoughCircles(blurframe,cv2.HOUGH_GRADIENT,0.01,180,
+                             param1=90,param2=60,minRadius=1,maxRadius=250)
+    if circles is not None:
+        circles = np.uint16(np.around(circles))
+        chosen = None
+        for i in circles[0, : ]:
+            if chosen is None: chosen = i
+            if prevCircle is not None:
+                if dist(chosen[0],chosen[1],prevCircle[0],prevCircle[1])<= dist(i[0],i[1],prevCircle[0],prevCircle[1]):
+                    chosen = i
+        cv2.circle(frame,(chosen[0],chosen[1]),1,(0,100,100),3)
+        cv2.circle(frame,(chosen[0],chosen[1]),chosen[2],(255,0,255),3)
+        cv2.putText(frame, "{},{}".format(i[0], i[1]), (i[0], i[1]), cv2.FONT_HERSHEY_COMPLEX, 1, (0, 255, 0), 5)
+        yatayX=i[0]
+        dikeyY=i[1]
+        motor_dondur()
+        PWM.set_duty_cycle(pwm1,pos1)
+PWM.set_duty_cycle(pwm2,pos2)
+        prevCircle=chosen
+    cv2.imshow("circle",frame)
+    if cv2.waitKey(1) & 0xFF == ord('q'):break
+videocapture.release()
+cv2.destroyAllWindows()
